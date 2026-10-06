@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>校企协同实习就业管理系统 - 登录</title>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', Arial, sans-serif;
+        }
+        .login-container {
+            width: 420px;
+            background: #fff;
+            border-radius: 8px;
+            padding: 40px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+        .login-title { text-align: center; font-size: 24px; color: #303133; margin-bottom: 10px; font-weight: 600; }
+        .login-subtitle { text-align: center; color: #909399; font-size: 14px; margin-bottom: 30px; }
+        .login-btn { width: 100%; }
+        .tips { margin-top: 20px; text-align: center; color: #909399; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="login-container">
+            <div class="login-title">校企协同实习就业管理系统</div>
+            <div class="login-subtitle">Internship & Employment Management</div>
+            <el-form :model="loginForm" :rules="rules" ref="loginForm" label-width="0">
+                <el-form-item prop="username">
+                    <el-input v-model="loginForm.username" prefix-icon="el-icon-user" placeholder="请输入用户名" @keyup.enter.native="handleLogin"></el-input>
+                </el-form-item>
+                <el-form-item prop="password">
+                    <el-input v-model="loginForm.password" prefix-icon="el-icon-lock" type="password" placeholder="请输入密码" @keyup.enter.native="handleLogin"></el-input>
+                </el-form-item>
+                <el-form-item>
+                    <el-button type="primary" class="login-btn" :loading="loading" @click="handleLogin">登 录</el-button>
+                </el-form-item>
+            </el-form>
+            <div class="tips">测试账号：admin / 密码：123456</div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@0.27.2/dist/axios.min.js"></script>
+    <script>
+        new Vue({
+            el: '#app',
+            data() {
+                return {
+                    loading: false,
+                    loginForm: { username: '', password: '' },
+                    rules: {
+                        username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+                        password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
+                    }
+                }
+            },
+            methods: {
+                handleLogin() {
+                    this.$refs.loginForm.validate(valid => {
+                        if (valid) {
+                            this.loading = true;
+                            axios.post('/api/user/login', this.loginForm)
+                                .then(res => {
+                                    this.loading = false;
+                                    if (res.data.code === 200) {
+                                        localStorage.setItem('token', res.data.data.token);
+                                        localStorage.setItem('userInfo', JSON.stringify(res.data.data));
+                                        this.$message.success('登录成功！');
+                                        setTimeout(() => { window.location.href = 'index.html'; }, 500);
+                                    } else {
+                                        this.$message.error(res.data.msg || '登录失败');
+                                    }
+                                })
+                                .catch(err => {
+                                    this.loading = false;
+                                    this.$message.error('网络错误，请检查后端是否启动');
+                                    console.error(err);
+                                });
+                        }
+                    });
+                }
+            }
+        });
+    </script>
+</body>
+</html>

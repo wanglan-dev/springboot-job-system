@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>企业管理</title>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <style>
+        body { margin: 0; padding: 20px; background: #f0f2f5; }
+        .page-title { font-size: 18px; font-weight: 600; margin-bottom: 20px; color: #303133; }
+        .form-box { background: #fff; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .table-box { background: #fff; padding: 20px; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="page-title">🏢 企业管理</div>
+        <div class="form-box">
+            <el-form :model="form" label-width="100px" :rules="rules" ref="form">
+                <el-form-item label="企业名称" prop="companyName"><el-input v-model="form.companyName"></el-input></el-form-item>
+                <el-form-item label="所属行业"><el-input v-model="form.industry"></el-input></el-form-item>
+                <el-form-item label="企业规模"><el-input v-model="form.scale" placeholder="如：10000人以上"></el-input></el-form-item>
+                <el-form-item label="企业地址"><el-input v-model="form.address"></el-input></el-form-item>
+                <el-form-item label="联系人"><el-input v-model="form.contactName"></el-input></el-form-item>
+                <el-form-item label="联系电话"><el-input v-model="form.contactPhone"></el-input></el-form-item>
+                <el-form-item label="企业简介"><el-input type="textarea" v-model="form.description" rows="4"></el-input></el-form-item>
+                <el-form-item><el-button type="primary" @click="submitForm">保存信息</el-button></el-form-item>
+            </el-form>
+        </div>
+        <div class="table-box">
+            <div style="font-size: 16px; font-weight: 600; margin-bottom: 15px;">我发布的岗位</div>
+            <el-table :data="jobList" border>
+                <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
+                <el-table-column prop="jobName" label="岗位名称"></el-table-column>
+                <el-table-column prop="city" label="城市" width="100"></el-table-column>
+                <el-table-column label="薪资" width="120"><template slot-scope="scope">{{ scope.row.salaryMin }}-{{ scope.row.salaryMax }}元/天</template></el-table-column>
+                <el-table-column label="状态" width="80"><template slot-scope="scope"><el-tag :type="scope.row.status===1?'success':'info'">{{ scope.row.status===1?'招聘中':'已下架' }}</el-tag></template></el-table-column>
+                <el-table-column label="操作" width="150"><template slot-scope="scope"><el-button size="mini" @click="toggleStatus(scope.row)">{{ scope.row.status===1?'下架':'上架' }}</el-button></template></el-table-column>
+            </el-table>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@0.27.2/dist/axios.min.js"></script>
+    <script>
+        axios.defaults.headers.common['Authorization'] = 'Bearer ' + localStorage.getItem('token');
+        new Vue({
+            el: '#app',
+            data() {
+                return {
+                    form: { id: null, companyName: '', industry: '', scale: '', address: '', contactName: '', contactPhone: '', description: '' },
+                    rules: { companyName: [{ required: true, message: '请输入企业名称', trigger: 'blur' }] },
+                    jobList: []
+                }
+            },
+            mounted() { this.loadData(); this.loadJobs(); },
+            methods: {
+                loadData() {
+                    axios.get('/api/company/my').then(res => {
+                        if (res.data.code === 200 && res.data.data) { this.form = res.data.data; }
+                    });
+                },
+                loadJobs() {
+                    axios.get('/api/job/my-jobs').then(res => {
+                        if (res.data.code === 200) { this.jobList = res.data.data; }
+                    });
+                },
+                submitForm() {
+                    this.$refs.form.validate(valid => {
+                        if (valid) {
+                            const api = this.form.id ? axios.put('/api/company', this.form) : axios.post('/api/company', this.form);
+                            api.then(res => { if (res.data.code === 200) { this.$message.success('保存成功'); this.loadData(); } });
+                        }
+                    });
+                },
+                toggleStatus(row) {
+                    row.status = row.status === 1 ? 0 : 1;
+                    axios.put('/api/job', row).then(res => { if (res.data.code === 200) { this.$message.success('操作成功'); this.loadJobs(); } });
+                }
+            }
+        });
+    </script>
+</body>
+</html>

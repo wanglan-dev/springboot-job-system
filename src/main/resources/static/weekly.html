@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>实习周记</title>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <style>
+        body { margin: 0; padding: 20px; background: #f0f2f5; }
+        .page-title { font-size: 18px; font-weight: 600; margin-bottom: 20px; color: #303133; }
+        .form-box { background: #fff; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .table-box { background: #fff; padding: 20px; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="page-title">📝 实习周记</div>
+        <div class="form-box">
+            <el-form :model="form" label-width="100px" :rules="rules" ref="form">
+                <el-row :gutter="20">
+                    <el-col :span="8"><el-form-item label="第几周" prop="weekNum"><el-input-number v-model="form.weekNum" :min="1" :max="52"></el-input-number></el-form-item></el-col>
+                    <el-col :span="16"><el-form-item label="标题" prop="title"><el-input v-model="form.title" placeholder="如：第一周实习周记"></el-input></el-form-item></el-col>
+                </el-row>
+                <el-form-item label="本周内容" prop="content"><el-input type="textarea" v-model="form.content" rows="5" placeholder="描述本周的工作内容、学习收获..."></el-input></el-form-item>
+                <el-form-item><el-button type="primary" @click="submitForm">提交周记</el-button><el-button @click="resetForm">重置</el-button></el-form-item>
+            </el-form>
+        </div>
+        <div class="table-box">
+            <el-table :data="tableData" border>
+                <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
+                <el-table-column prop="weekNum" label="第几周" width="80" align="center"></el-table-column>
+                <el-table-column prop="title" label="标题"></el-table-column>
+                <el-table-column prop="content" label="内容" show-overflow-tooltip></el-table-column>
+                <el-table-column prop="teacherComment" label="老师评语"></el-table-column>
+                <el-table-column label="状态" width="100">
+                    <template slot-scope="scope">
+                        <el-tag :type="statusType(scope.row.status)">{{ statusText(scope.row.status) }}</el-tag>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="createTime" label="提交时间" width="180"></el-table-column>
+            </el-table>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@0.27.2/dist/axios.min.js"></script>
+    <script>
+        axios.defaults.headers.common['Authorization'] = 'Bearer ' + localStorage.getItem('token');
+        new Vue({
+            el: '#app',
+            data() {
+                return {
+                    form: { weekNum: 1, title: '', content: '' },
+                    rules: { weekNum: [{ required: true, message: '请选择周次', trigger: 'change' }], title: [{ required: true, message: '请输入标题', trigger: 'blur' }], content: [{ required: true, message: '请输入内容', trigger: 'blur' }] },
+                    tableData: []
+                }
+            },
+            mounted() { this.loadData(); },
+            methods: {
+                loadData() {
+                    axios.get('/api/weekly/my').then(res => {
+                        if (res.data.code === 200) { this.tableData = res.data.data; }
+                    });
+                },
+                submitForm() {
+                    this.$refs.form.validate(valid => {
+                        if (valid) {
+                            axios.post('/api/weekly', this.form).then(res => {
+                                if (res.data.code === 200) { this.$message.success('提交成功'); this.resetForm(); this.loadData(); }
+                                else { this.$message.error(res.data.msg); }
+                            });
+                        }
+                    });
+                },
+                resetForm() { this.$refs.form.resetFields(); },
+                statusType(s) { return s === 0 ? 'warning' : s === 1 ? 'success' : 'danger'; },
+                statusText(s) { return s === 0 ? '待审核' : s === 1 ? '已通过' : '已退回'; }
+            }
+        });
+    </script>
+</body>
+</html>

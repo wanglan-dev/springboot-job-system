@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>投递处理</title>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <style>
+        body { margin: 0; padding: 20px; background: #f0f2f5; }
+        .page-title { font-size: 18px; font-weight: 600; margin-bottom: 20px; color: #303133; }
+        .table-box { background: #fff; padding: 20px; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="page-title">📨 简历投递处理</div>
+        <div class="table-box">
+            <el-table :data="tableData" v-loading="loading" border>
+                <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
+                <el-table-column prop="studentName" label="学生姓名" width="120"></el-table-column>
+                <el-table-column prop="jobName" label="投递岗位" min-width="150"></el-table-column>
+                <el-table-column prop="status" label="状态" width="100">
+                    <template slot-scope="scope"><el-tag :type="statusType(scope.row.status)">{{ scope.row.status }}</el-tag></template>
+                </el-table-column>
+                <el-table-column prop="createTime" label="投递时间" width="180"></el-table-column>
+                <el-table-column label="操作" width="300">
+                    <template slot-scope="scope">
+                        <el-button size="mini" @click="handleView(scope.row)">查看简历</el-button>
+                        <el-button size="mini" type="success" @click="handleAction(scope.row, '已录用')">录用</el-button>
+                        <el-button size="mini" type="danger" @click="handleAction(scope.row, '已拒绝')">拒绝</el-button>
+                    </template>
+                </el-table-column>
+            </el-table>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@0.27.2/dist/axios.min.js"></script>
+    <script>
+        axios.defaults.headers.common['Authorization'] = 'Bearer ' + localStorage.getItem('token');
+        new Vue({
+            el: '#app',
+            data() { return { loading: false, tableData: [] }; },
+            mounted() { this.loadData(); },
+            methods: {
+                loadData() {
+                    this.loading = true;
+                    axios.get('/api/delivery/hr-list').then(res => {
+                        this.loading = false;
+                        if (res.data.code === 200) { this.tableData = res.data.data; }
+                    }).catch(() => { this.loading = false; });
+                },
+                statusType(s) { const map = { '待处理': 'info', '已查看': '', '面试邀请': 'warning', '已录用': 'success', '已拒绝': 'danger' }; return map[s] || 'info'; },
+                handleView(row) { this.$alert('学生简历详情功能待完善', '简历详情'); },
+                handleAction(row, status) {
+                    this.$confirm('确认将该投递标记为「' + status + '」？', '确认', { type: 'warning' }).then(() => {
+                        axios.put('/api/delivery/' + row.id, { status: status }).then(res => {
+                            if (res.data.code === 200) { this.$message.success('操作成功'); this.loadData(); }
+                        });
+                    }).catch(() => {});
+                }
+            }
+        });
+    </script>
+</body>
+</html>

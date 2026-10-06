@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>周记审核</title>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <style>
+        body { margin: 0; padding: 20px; background: #f0f2f5; }
+        .page-title { font-size: 18px; font-weight: 600; margin-bottom: 20px; color: #303133; }
+        .table-box { background: #fff; padding: 20px; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="page-title">📝 实习周记审核</div>
+        <div class="table-box">
+            <el-table :data="tableData" border>
+                <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
+                <el-table-column prop="studentName" label="学生姓名" width="120"></el-table-column>
+                <el-table-column prop="weekNum" label="第几周" width="80" align="center"></el-table-column>
+                <el-table-column prop="title" label="标题"></el-table-column>
+                <el-table-column prop="content" label="内容" show-overflow-tooltip></el-table-column>
+                <el-table-column label="状态" width="100">
+                    <template slot-scope="scope"><el-tag :type="scope.row.status===0?'warning':scope.row.status===1?'success':'danger'">{{ scope.row.status===0?'待审核':scope.row.status===1?'已通过':'已退回' }}</el-tag></template>
+                </el-table-column>
+                <el-table-column label="操作" width="250">
+                    <template slot-scope="scope">
+                        <el-button size="mini" type="success" @click="handleAudit(scope.row, 1)">通过</el-button>
+                        <el-button size="mini" type="danger" @click="handleAudit(scope.row, 2)">退回</el-button>
+                    </template>
+                </el-table-column>
+            </el-table>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@0.27.2/dist/axios.min.js"></script>
+    <script>
+        axios.defaults.headers.common['Authorization'] = 'Bearer ' + localStorage.getItem('token');
+        new Vue({
+            el: '#app',
+            data() { return { tableData: [] }; },
+            mounted() { this.loadData(); },
+            methods: {
+                loadData() {
+                    axios.get('/api/weekly/audit-list').then(res => {
+                        if (res.data.code === 200) { this.tableData = res.data.data; }
+                    });
+                },
+                handleAudit(row, status) {
+                    const msg = status === 1 ? '通过' : '退回';
+                    this.$prompt('请输入审核意见（可选）', '审核' + msg, { confirmButtonText: '确定', cancelButtonText: '取消', inputValue: row.teacherComment || '' }).then(({ value }) => {
+                        axios.put('/api/weekly/audit/' + row.id, { status: status, teacherComment: value }).then(res => {
+                            if (res.data.code === 200) { this.$message.success('审核' + msg + '成功'); this.loadData(); }
+                        });
+                    }).catch(() => {});
+                }
+            }
+        });
+    </script>
+</body>
+</html>

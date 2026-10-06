@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>岗位列表</title>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <style>
+        body { margin: 0; padding: 20px; background: #f0f2f5; }
+        .page-title { font-size: 18px; font-weight: 600; margin-bottom: 20px; color: #303133; }
+        .search-bar { background: #fff; padding: 20px; border-radius: 4px; margin-bottom: 20px; }
+        .job-card { background: #fff; padding: 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 12px rgba(0,0,0,0.05); }
+        .job-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .job-name { font-size: 16px; font-weight: 600; color: #303133; }
+        .job-salary { color: #f56c6c; font-weight: 600; }
+        .job-info { color: #909399; font-size: 14px; margin-bottom: 10px; }
+        .job-desc { color: #606266; font-size: 14px; line-height: 1.6; margin-bottom: 15px; }
+        .job-footer { display: flex; justify-content: space-between; align-items: center; }
+        .company-tag { background: #ecf5ff; color: #409EFF; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="page-title">🔍 实习岗位列表</div>
+        <div class="search-bar">
+            <el-form :inline="true" :model="searchForm">
+                <el-form-item label="关键词"><el-input v-model="searchForm.keyword" placeholder="岗位名称/公司" clearable></el-input></el-form-item>
+                <el-form-item label="城市"><el-input v-model="searchForm.city" placeholder="工作城市" clearable></el-input></el-form-item>
+                <el-form-item>
+                    <el-button type="primary" icon="el-icon-search" @click="loadData">搜索</el-button>
+                    <el-button icon="el-icon-refresh" @click="resetSearch">重置</el-button>
+                </el-form-item>
+            </el-form>
+        </div>
+        <div v-for="job in jobList" :key="job.id" class="job-card">
+            <div class="job-header">
+                <span class="job-name">{{ job.jobName }}</span>
+                <span class="job-salary">{{ job.salaryMin }} - {{ job.salaryMax }} 元/天</span>
+            </div>
+            <div class="job-info">
+                <i class="el-icon-office-building"></i> {{ job.companyName }} &nbsp;|&nbsp;
+                <i class="el-icon-location"></i> {{ job.city }} &nbsp;|&nbsp;
+                <i class="el-icon-reading"></i> {{ job.education }} &nbsp;|&nbsp;
+                <i class="el-icon-suitcase"></i> {{ job.jobType }}
+            </div>
+            <div class="job-desc">{{ job.description }}</div>
+            <div class="job-footer">
+                <span class="company-tag">{{ job.companyName }}</span>
+                <el-button type="primary" size="small" @click="handleDeliver(job)">投递简历</el-button>
+            </div>
+        </div>
+        <el-pagination style="margin-top: 20px; text-align: right;" @current-change="handleCurrentChange" :current-page="page.current" :page-size="page.size" layout="total, prev, pager, next" :total="page.total"></el-pagination>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@0.27.2/dist/axios.min.js"></script>
+    <script>
+        axios.defaults.headers.common['Authorization'] = 'Bearer ' + localStorage.getItem('token');
+        new Vue({
+            el: '#app',
+            data() { return { jobList: [], page: { current: 1, size: 10, total: 0 }, searchForm: { keyword: '', city: '' } }; },
+            mounted() { this.loadData(); },
+            methods: {
+                loadData() {
+                    const params = { current: this.page.current, size: this.page.size, ...this.searchForm };
+                    axios.get('/api/job/list', { params }).then(res => {
+                        if (res.data.code === 200) { this.jobList = res.data.data.records; this.page.total = res.data.data.total; }
+                    });
+                },
+                resetSearch() { this.searchForm = { keyword: '', city: '' }; this.page.current = 1; this.loadData(); },
+                handleCurrentChange(val) { this.page.current = val; this.loadData(); },
+                handleDeliver(job) {
+                    this.$confirm('确认投递「' + job.jobName + '」？', '投递确认', { type: 'warning' }).then(() => {
+                        axios.post('/api/delivery', { jobId: job.id }).then(res => {
+                            if (res.data.code === 200) { this.$message.success('投递成功！'); }
+                            else { this.$message.error(res.data.msg || '投递失败'); }
+                        });
+                    }).catch(() => {});
+                }
+            }
+        });
+    </script>
+</body>
+</html>

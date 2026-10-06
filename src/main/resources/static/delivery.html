@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>投递记录管理</title>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <style>
+        body { margin: 0; padding: 20px; background: #f0f2f5; }
+        .page-title { font-size: 18px; font-weight: 600; margin-bottom: 20px; color: #303133; }
+        .search-bar { background: #fff; padding: 20px; border-radius: 4px; margin-bottom: 20px; }
+        .table-box { background: #fff; padding: 20px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="page-title">📋 投递记录管理</div>
+        <div class="search-bar">
+            <el-form :inline="true" :model="searchForm">
+                <el-form-item label="投递状态">
+                    <el-select v-model="searchForm.status" placeholder="全部" clearable>
+                        <el-option label="待处理" value="待处理"></el-option>
+                        <el-option label="已查看" value="已查看"></el-option>
+                        <el-option label="面试邀请" value="面试邀请"></el-option>
+                        <el-option label="已录用" value="已录用"></el-option>
+                        <el-option label="已拒绝" value="已拒绝"></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item>
+                    <el-button type="primary" icon="el-icon-search" @click="loadData">查询</el-button>
+                    <el-button icon="el-icon-refresh" @click="resetSearch">重置</el-button>
+                </el-form-item>
+            </el-form>
+        </div>
+        <div class="table-box">
+            <el-table :data="tableData" v-loading="loading" border>
+                <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
+                <el-table-column prop="studentName" label="学生姓名" width="120"></el-table-column>
+                <el-table-column prop="jobName" label="岗位名称" min-width="150"></el-table-column>
+                <el-table-column prop="companyName" label="企业名称" min-width="120"></el-table-column>
+                <el-table-column prop="status" label="投递状态" width="100">
+                    <template slot-scope="scope"><el-tag :type="statusType(scope.row.status)">{{ scope.row.status }}</el-tag></template>
+                </el-table-column>
+                <el-table-column prop="createTime" label="投递时间" width="180"></el-table-column>
+                <el-table-column label="操作" width="200" fixed="right">
+                    <template slot-scope="scope">
+                        <el-button size="mini" @click="handleView(scope.row)">查看</el-button>
+                        <el-button size="mini" type="primary" @click="handleStatus(scope.row)">修改状态</el-button>
+                    </template>
+                </el-table-column>
+            </el-table>
+            <el-pagination style="margin-top: 20px; text-align: right;" @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="page.current" :page-sizes="[10, 20, 50]" :page-size="page.size" layout="total, sizes, prev, pager, next, jumper" :total="page.total"></el-pagination>
+        </div>
+        <el-dialog title="修改投递状态" :visible.sync="statusDialogVisible" width="400px">
+            <el-form :model="statusForm" label-width="100px">
+                <el-form-item label="当前状态"><el-tag>{{ statusForm.currentStatus }}</el-tag></el-form-item>
+                <el-form-item label="新状态">
+                    <el-select v-model="statusForm.newStatus" placeholder="请选择">
+                        <el-option label="待处理" value="待处理"></el-option>
+                        <el-option label="已查看" value="已查看"></el-option>
+                        <el-option label="面试邀请" value="面试邀请"></el-option>
+                        <el-option label="已录用" value="已录用"></el-option>
+                        <el-option label="已拒绝" value="已拒绝"></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="备注"><el-input type="textarea" v-model="statusForm.remark" rows="3"></el-input></el-form-item>
+            </el-form>
+            <div slot="footer"><el-button @click="statusDialogVisible = false">取消</el-button><el-button type="primary" @click="submitStatus">确定</el-button></div>
+        </el-dialog>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@0.27.2/dist/axios.min.js"></script>
+    <script>
+        axios.defaults.headers.common['Authorization'] = 'Bearer ' + localStorage.getItem('token');
+        new Vue({
+            el: '#app',
+            data() {
+                return {
+                    loading: false,
+                    tableData: [],
+                    page: { current: 1, size: 10, total: 0 },
+                    searchForm: { status: '' },
+                    statusDialogVisible: false,
+                    statusForm: { id: null, currentStatus: '', newStatus: '', remark: '' }
+                }
+            },
+            mounted() { this.loadData(); },
+            methods: {
+                loadData() {
+                    this.loading = true;
+                    const params = { current: this.page.current, size: this.page.size, status: this.searchForm.status };
+                    axios.get('/api/delivery/list', { params }).then(res => {
+                        this.loading = false;
+                        if (res.data.code === 200) { this.tableData = res.data.data.records; this.page.total = res.data.data.total; }
+                    }).catch(() => { this.loading = false; });
+                },
+                resetSearch() { this.searchForm = { status: '' }; this.page.current = 1; this.loadData(); },
+                handleSizeChange(val) { this.page.size = val; this.loadData(); },
+                handleCurrentChange(val) { this.page.current = val; this.loadData(); },
+                statusType(status) {
+                    const map = { '待处理': 'info', '已查看': '', '面试邀请': 'warning', '已录用': 'success', '已拒绝': 'danger' };
+                    return map[status] || 'info';
+                },
+                handleView(row) {
+                    this.$alert(`学生：${row.studentName}<br>岗位：${row.jobName}<br>状态：${row.status}<br>备注：${row.remark || '无'}`, '投递详情', { dangerouslyUseHTMLString: true });
+                },
+                handleStatus(row) {
+                    this.statusForm = { id: row.id, currentStatus: row.status, newStatus: row.status, remark: row.remark || '' };
+                    this.statusDialogVisible = true;
+                },
+                submitStatus() {
+                    axios.put('/api/delivery/' + this.statusForm.id, { status: this.statusForm.newStatus, remark: this.statusForm.remark }).then(res => {
+                        if (res.data.code === 200) { this.$message.success('状态更新成功'); this.statusDialogVisible = false; this.loadData(); }
+                    });
+                }
+            }
+        });
+    </script>
+</body>
+</html>
